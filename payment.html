@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment | Mattancherry Youth Football Tournament</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .payment-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+    .qr-box{text-align:center;background:#fff7df;border:1px solid #ead8a6;border-radius:14px;padding:18px}
+    .qr-box img{display:block;width:min(100%,420px);margin:10px auto;border-radius:8px}
+    .upi-id{font-size:1.25rem;font-weight:800;word-break:break-word}
+    .amount{font-size:2rem;font-weight:800}
+    .success-note{background:#ecfdf5;border:1px solid #a7f3d0;padding:14px;border-radius:10px}
+    @media(max-width:800px){.payment-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">MATTANCHERRY YOUTH</p>
+      <h1>Registration Payment</h1>
+      <p>Secure UPI payment for your tournament registration</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="payment-grid">
+        <div>
+          <h2>Payment Details</h2>
+          <div class="team">
+            <strong>Tournament</strong><br>
+            Mattancherry Youth Football Tournament
+          </div>
+          <div class="team">
+            <strong>Dates</strong><br>
+            27/08/2026 – 30/08/2026
+          </div>
+          <div class="team">
+            <strong>Registration Fee</strong><br>
+            <span class="amount">₹1,500</span>
+          </div>
+          <div class="team">
+            <strong>Team Limit</strong><br>
+            First 32 teams
+          </div>
+          <p class="success-note">
+            Complete the payment using the UPI QR code. Keep your payment confirmation/reference
+            available for the tournament administrator.
+          </p>
+          <a class="button secondary" href="/coach.html">Back to Coach Dashboard</a>
+        </div>
+
+        <div>
+          <h2>Pay Using UPI</h2>
+          <div class="qr-box">
+            <p><strong>Scan &amp; Pay using any UPI App</strong></p>
+            <div class="upi-id">9526043417@fam</div>
+            <img src="/images/upi-qr.jpg" alt="UPI QR code for tournament registration payment">
+            <p>UPI ID: <strong>9526043417@fam</strong></p>
+          </div>
+          <p class="success-note">
+            After paying, contact the tournament administrator with the payment reference.
+            This page does not automatically verify the bank payment.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>© 2026 Mattancherry Youth Football Tournament</footer>
+</body>
+</html>
