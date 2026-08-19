@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coach Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<main class="container">
+  <section class="card">
+    <div class="row-between">
+      <div><h1>Coach Dashboard</h1><p id="who"></p></div>
+      <button id="logout" class="button secondary">Logout</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Register Team</h2>
+    <form id="teamForm">
+      <label>Team Name<input name="name" required maxlength="150"></label>
+      <label>Contact Phone<input name="contactPhone" required maxlength="30"></label>
+      <label>School / Club<input name="schoolOrClub" maxlength="200"></label>
+      <button class="button" type="submit">Register Team — ₹1,500</button>
+      <p id="teamMessage" class="message"></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="row-between"><h2>My Teams</h2><a class="button" href="/payment.html">Pay ₹1,500</a></div>
+    <div id="teams"></div>
+  </section>
+
+  <section class="card">
+    <h2>Add Player</h2>
+    <form id="playerForm" enctype="multipart/form-data">
+      <label>Team
+        <select name="teamId" id="teamSelect" required></select>
+      </label>
+      <label>Player Full Name<input name="fullName" required maxlength="150"></label>
+      <label>Date of Birth<input name="dateOfBirth" type="date"></label>
+      <label>School ID Number<input name="schoolIdNumber" required maxlength="100"></label>
+      <label>Player Photo<input name="photo" type="file" accept="image/jpeg,image/png" required></label>
+      <label>School ID Document<input name="schoolId" type="file" accept="image/jpeg,image/png,application/pdf" required></label>
+      <button class="button" type="submit">Upload Player</button>
+      <p id="playerMessage" class="message"></p>
+    </form>
+  </section>
+</main>
+<script src="/js/coach.js"></script>
+</body>
+</html>
