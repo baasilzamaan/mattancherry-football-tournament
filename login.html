@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Tournament Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<main class="container narrow">
+  <section class="card">
+    <h1>Coach / Admin Login</h1>
+    <form id="loginForm">
+      <label>Username<input name="username" required autocomplete="username"></label>
+      <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="button" type="submit">Login</button>
+      <p id="message" class="message"></p>
+    </form>
+    <hr>
+    <h2>Create Coach Account</h2>
+    <form id="registerForm">
+      <label>Username<input name="username" required></label>
+      <label>Password (8+ characters)<input name="password" type="password" minlength="8" required></label>
+      <button class="button secondary" type="submit">Create Coach Account</button>
+      <p id="registerMessage" class="message"></p>
+    </form>
+  </section>
+</main>
+<script src="/js/main.js"></script>
+</body>
+</html>
