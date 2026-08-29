@@ -17,6 +17,7 @@ async function loadTeams() {
   const box = document.getElementById("teams");
   const select = document.getElementById("teamSelect");
   const playerTeamSelect = document.getElementById("playerTeamSelect");
+
   box.innerHTML = "";
   select.innerHTML = "";
   playerTeamSelect.innerHTML = "";
@@ -69,28 +70,22 @@ async function loadPlayers(teamId) {
 
     box.innerHTML = data.players.map(player => {
       const dob = player.date_of_birth
-        ? new Date(player.date_of_birth).toLocaleDateString("en-IN")
+        ? new Date(player.date_of_birth + "T00:00:00").toLocaleDateString("en-IN")
         : "Not provided";
-
-      const photoButton = player.has_photo
-        ? `<button type="button" class="button secondary view-file"
-             data-player="${player.id}" data-kind="photo">View Photo</button>`
-        : "No photo";
-
-      const aadhaarButton = player.has_aadhaar
-        ? `<button type="button" class="button secondary view-file"
-             data-player="${player.id}" data-kind="aadhaar">View Aadhaar</button>`
-        : "No Aadhaar file";
 
       return `
         <div class="team player-card">
           <strong>${escapeHtml(player.full_name)}</strong><br>
           Date of Birth: ${escapeHtml(dob)}<br>
           Phone: ${escapeHtml(player.phone_number || "Not provided")}<br>
-          Added: ${escapeHtml(new Date(player.created_at).toLocaleString("en-IN"))}<br>
+          Added: ${escapeHtml(new Date(player.created_at).toLocaleString("en-IN"))}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-            ${photoButton}
-            ${aadhaarButton}
+            ${player.has_photo
+              ? `<button type="button" class="button secondary view-file" data-player="${player.id}" data-kind="photo">View Photo</button>`
+              : "<span>No photo</span>"}
+            ${player.has_aadhaar
+              ? `<button type="button" class="button secondary view-file" data-player="${player.id}" data-kind="aadhaar">View Aadhaar</button>`
+              : "<span>No Aadhaar file</span>"}
           </div>
         </div>`;
     }).join("");
@@ -106,19 +101,12 @@ async function loadPlayers(teamId) {
   }
 }
 
-function setupPlayerViewer() {
-  const select = document.getElementById("playerTeamSelect");
-  const refresh = document.getElementById("refreshPlayers");
-
-  select.addEventListener("change", () => loadPlayers(select.value));
-  refresh.addEventListener("click", () => loadPlayers(select.value));
-}
-
 document.getElementById("teamForm").addEventListener("submit", async e => {
   e.preventDefault();
   const f = new FormData(e.target);
   const msg = document.getElementById("teamMessage");
   msg.textContent = "Registering team...";
+
   try {
     await api("/api/teams", {
       method: "POST",
@@ -129,6 +117,7 @@ document.getElementById("teamForm").addEventListener("submit", async e => {
         schoolOrClub: f.get("schoolOrClub")
       })
     });
+
     msg.textContent = "Team registered successfully.";
     e.target.reset();
     await loadTeams();
@@ -139,6 +128,7 @@ document.getElementById("teamForm").addEventListener("submit", async e => {
 
 document.getElementById("playerForm").addEventListener("submit", async e => {
   e.preventDefault();
+
   const form = e.target;
   const f = new FormData(form);
   const teamId = f.get("teamId");
@@ -146,24 +136,44 @@ document.getElementById("playerForm").addEventListener("submit", async e => {
   const photo = f.get("photo");
   const aadhaar = f.get("aadhaarCard");
 
-  if (!photo || !photo.size) return (msg.textContent = "Please select the player's photo.");
-  if (!aadhaar || !aadhaar.size) return (msg.textContent = "Please select the Aadhaar Card file.");
+  if (!photo || !photo.size) {
+    msg.textContent = "Please select the player's photo.";
+    return;
+  }
+
+  if (!aadhaar || !aadhaar.size) {
+    msg.textContent = "Please select the Aadhaar Card file.";
+    return;
+  }
+
   if (photo.size > 5 * 1024 * 1024 || aadhaar.size > 5 * 1024 * 1024) {
-    return (msg.textContent = "Each uploaded file must be 5 MB or smaller.");
+    msg.textContent = "Each uploaded file must be 5 MB or smaller.";
+    return;
   }
 
   msg.textContent = "Uploading player securely...";
+
   try {
     await api(`/api/teams/${encodeURIComponent(teamId)}/players`, {
       method: "POST",
       body: f
     });
-    msg.textContent = "Player added securely.";
+
+    msg.textContent = "Player added successfully.";
     form.reset();
+
     await loadTeams();
   } catch (err) {
     msg.textContent = err.message;
   }
+});
+
+document.getElementById("playerTeamSelect").addEventListener("change", e => {
+  loadPlayers(e.target.value);
+});
+
+document.getElementById("refreshPlayers").addEventListener("click", () => {
+  loadPlayers(document.getElementById("playerTeamSelect").value);
 });
 
 document.getElementById("logout").addEventListener("click", async () => {
@@ -173,9 +183,12 @@ document.getElementById("logout").addEventListener("click", async () => {
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
   }[c]));
 }
 
-setupPlayerViewer();
 loadCoach().catch(() => (location.href = "/login.html"));
