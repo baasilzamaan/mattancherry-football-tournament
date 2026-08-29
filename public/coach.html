@@ -19,7 +19,7 @@
     <h2>Register Team</h2>
     <form id="teamForm">
       <label>Team Name<input name="name" required maxlength="150"></label>
-      <label>Contact Phone<input name="contactPhone" required maxlength="30"></label>
+      <label>Contact Phone<input name="contactPhone" type="tel" inputmode="tel" required maxlength="30" placeholder="Coach/team phone number"></label>
       <label>School / Club<input name="schoolOrClub" maxlength="200"></label>
       <button class="button" type="submit">Register Team — ₹1,500</button>
       <p id="teamMessage" class="message"></p>
@@ -39,9 +39,9 @@
       </label>
       <label>Player Full Name<input name="fullName" required maxlength="150"></label>
       <label>Date of Birth<input name="dateOfBirth" type="date"></label>
-      <label>phone number<input name="schoolIdNumber" required maxlength="100"></label>
-      <label>Player Photo<input name="photo" type="file" accept="image/jpeg,image/png" required></label>
-      <label>Aadhar card<input name="schoolId" type="file" accept="image/jpeg,image/png,application/pdf" required></label>
+      <label>Player Phone Number<input name="phoneNumber" type="tel" inputmode="tel" required maxlength="30" placeholder="Enter player's phone number"></label>
+      <label>Player Photo<input name="photo" type="file" accept="image/jpeg,image/png" required><small>JPG or PNG, maximum 5 MB.</small></label>
+      <label>Aadhaar Card<input name="aadhaarCard" type="file" accept="image/jpeg,image/png,application/pdf" required><small>Upload the Aadhaar card image or PDF, maximum 5 MB.</small></label>
       <button class="button" type="submit">Upload Player</button>
       <p id="playerMessage" class="message"></p>
     </form>
