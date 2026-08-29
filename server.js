@@ -151,6 +151,11 @@ async function initDb() {
   await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
   await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS aadhaar_path TEXT`);
 
+
+  // Compatibility migration for older player tables.
+  // Old versions used school_id_number/school_id_path; the current form uses Aadhaar.
+  await pool.query(`ALTER TABLE players ALTER COLUMN school_id_number DROP NOT NULL`);
+  await pool.query(`ALTER TABLE players ALTER COLUMN school_id_path DROP NOT NULL`);
   // If an earlier version stored the player's phone in school_id_number,
   // copy it once into the new phone_number field where possible.
   await pool.query(`
@@ -344,25 +349,27 @@ app.post("/api/teams/:teamId/players",
         return res.status(400).json({ error: "Invalid upload." });
       }
       if (err.message && /Only JPG, PNG, or PDF/.test(err.message)) return res.status(400).json({ error: err.message });
-      console.error(err);
-      res.status(500).json({ error: "Could not add player." });
+      console.error("PLAYER INSERT ERROR:", err);
+      res.status(500).json({
+        error: process.env.NODE_ENV === "production"
+          ? "Could not add player. Check the Render logs for PLAYER INSERT ERROR."
+          : (err.message || "Could not add player.")
+      });
     }
   }
 );
+
 
 // Coach can view players belonging only to their own team.
 app.get("/api/my-teams/:teamId/players", requireDb, requireAuth, requireRole("coach"), async (req, res) => {
   try {
     const teamId = Number(req.params.teamId);
-    if (!Number.isInteger(teamId) || teamId < 1) {
-      return res.status(400).json({ error: "Invalid team." });
-    }
+    if (!Number.isInteger(teamId) || teamId < 1) return res.status(400).json({ error: "Invalid team." });
 
     const team = await pool.query(
       "SELECT id FROM teams WHERE id=$1 AND coach_user_id=$2",
       [teamId, req.session.user.id]
     );
-
     if (!team.rowCount) return res.status(404).json({ error: "Team not found." });
 
     const result = await pool.query(
@@ -382,17 +389,14 @@ app.get("/api/my-teams/:teamId/players", requireDb, requireAuth, requireRole("co
   }
 });
 
-// Coach-only private player files. Ownership is checked before every file request.
+// Coach-only private player files.
 app.get("/api/my-players/:playerId/file/:kind", requireDb, requireAuth, requireRole("coach"), async (req, res) => {
   try {
     const playerId = Number(req.params.playerId);
-    if (!Number.isInteger(playerId) || playerId < 1) {
-      return res.status(400).json({ error: "Invalid player." });
-    }
-
     const field = req.params.kind === "photo" ? "photo_path" :
                   req.params.kind === "aadhaar" ? "aadhaar_path" : null;
 
+    if (!Number.isInteger(playerId) || playerId < 1) return res.status(400).json({ error: "Invalid player." });
     if (!field) return res.status(400).json({ error: "Invalid file type." });
 
     const result = await pool.query(
@@ -406,9 +410,7 @@ app.get("/api/my-players/:playerId/file/:kind", requireDb, requireAuth, requireR
     if (!result.rowCount) return res.status(404).json({ error: "Player not found." });
 
     const filePath = safePrivateFile(result.rows[0].filename);
-    if (!filePath || !fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "File not found." });
-    }
+    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: "File not found." });
 
     res.setHeader("Cache-Control", "private, no-store, max-age=0");
     res.setHeader("X-Content-Type-Options", "nosniff");
