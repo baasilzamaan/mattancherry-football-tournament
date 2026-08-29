@@ -3,23 +3,201 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
+  <title>Admin Dashboard — Tournament</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .team-card{margin-top:16px;padding:18px;border:1px solid #ddd;border-radius:14px;background:#fff}
+    .team-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+    .players{margin-top:15px;display:grid;gap:12px}
+    .player{padding:14px;border-radius:12px;background:#f7f7f7;border:1px solid #e5e5e5}
+    .player-grid{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:start}
+    .player-photo{width:90px;height:110px;object-fit:cover;border-radius:8px;background:#ddd}
+    .muted{color:#666;font-size:.92rem}
+    .pill{display:inline-block;padding:4px 9px;border-radius:999px;background:#eee;font-size:.82rem}
+    .approved{background:#dff5e5}.pending{background:#fff1c7}.rejected{background:#ffdede}
+    .doc-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .loading{padding:20px;text-align:center;color:#666}
+    .error{color:#a00;background:#ffecec;padding:12px;border-radius:10px}
+    @media(max-width:600px){.player-grid{grid-template-columns:1fr}.player-photo{width:100px}}
+  </style>
 </head>
 <body>
 <main class="container">
   <section class="card">
     <div class="row-between">
-      <div><h1>Admin Dashboard</h1><p id="who"></p></div>
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p id="who"></p>
+      </div>
       <button id="logout" class="button secondary">Logout</button>
     </div>
   </section>
+
   <section class="card">
-    <h2>Team Registrations</h2>
-    <p id="summary"></p>
-    <div id="teams"></div>
+    <div class="row-between">
+      <div>
+        <h2>Team Registrations</h2>
+        <p id="summary">Loading registrations…</p>
+      </div>
+      <button id="refresh" class="button">Refresh</button>
+    </div>
+    <div id="teams" class="loading">Loading team information…</div>
   </section>
 </main>
-<script src="/js/admin.js"></script>
+
+<script>
+async function api(url, options={}) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+  }[c]));
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? escapeHtml(value) : d.toLocaleString();
+}
+
+function statusClass(status) {
+  return ["approved","pending","rejected"].includes(status) ? status : "";
+}
+
+async function loadAdmin() {
+  const me = await api("/api/me");
+  if (!me.user || me.user.role !== "admin") {
+    location.href = "/login.html";
+    return;
+  }
+  document.getElementById("who").textContent = `Logged in as ${me.user.username}`;
+
+  const data = await api("/api/admin/teams");
+  document.getElementById("summary").textContent =
+    `${data.teams.length} registered team(s). Maximum allowed: 32.`;
+
+  const box = document.getElementById("teams");
+  box.className = "";
+  box.innerHTML = "";
+
+  if (!data.teams.length) {
+    box.innerHTML = '<p class="muted">No team registrations yet.</p>';
+    return;
+  }
+
+  for (const team of data.teams) {
+    const div = document.createElement("article");
+    div.className = "team-card";
+    div.innerHTML = `
+      <div class="team-head">
+        <div>
+          <h3>${escapeHtml(team.name)}</h3>
+          <span class="pill ${statusClass(team.status)}">${escapeHtml(team.status)}</span>
+        </div>
+        <div class="muted">Registered: ${formatDate(team.created_at)}</div>
+      </div>
+      <p>
+        <strong>Coach:</strong> ${escapeHtml(team.coach_username)}<br>
+        <strong>Phone:</strong> ${escapeHtml(team.contact_phone)}<br>
+        <strong>School / Club:</strong> ${escapeHtml(team.school_or_club || "—")}<br>
+        <strong>Players:</strong> ${escapeHtml(team.player_count)}<br>
+        <strong>Fee:</strong> ₹${escapeHtml(team.fee_amount || 1500)}<br>
+        <strong>Payment Reference:</strong> ${escapeHtml(team.payment_reference || "—")}
+      </p>
+      <div class="doc-links">
+        <button class="button" onclick="viewPlayers(${Number(team.id)}, this)">View Player Details</button>
+        <button class="button secondary" onclick="setStatus(${Number(team.id)}, 'approved')">Approve</button>
+        <button class="button secondary" onclick="setStatus(${Number(team.id)}, 'rejected')">Reject</button>
+        <button class="button secondary" onclick="setStatus(${Number(team.id)}, 'pending')">Pending</button>
+      </div>
+      <div id="players-${Number(team.id)}" class="players"></div>
+    `;
+    box.appendChild(div);
+  }
+}
+
+async function viewPlayers(teamId, button) {
+  const target = document.getElementById(`players-${teamId}`);
+  if (target.dataset.loaded === "true") {
+    target.innerHTML = "";
+    target.dataset.loaded = "false";
+    button.textContent = "View Player Details";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Loading…";
+  target.innerHTML = '<div class="loading">Loading player information…</div>';
+
+  try {
+    const data = await api(`/api/admin/teams/${encodeURIComponent(teamId)}/players`);
+    target.innerHTML = "";
+
+    if (!data.players || !data.players.length) {
+      target.innerHTML = '<p class="muted">No players uploaded for this team yet.</p>';
+    } else {
+      data.players.forEach(player => {
+        const card = document.createElement("div");
+        card.className = "player";
+        card.innerHTML = `
+          <div class="player-grid">
+            <img class="player-photo" src="/api/admin/players/${Number(player.id)}/file/photo"
+                 alt="Player photo" onerror="this.style.display='none'">
+            <div>
+              <strong>${escapeHtml(player.full_name)}</strong>
+              <p>
+                <strong>Date of Birth:</strong> ${escapeHtml(player.date_of_birth || "—")}<br>
+                <strong>Aadhaar Number:</strong> ${escapeHtml(player.aadhaar_number || "—")}<br>
+                <strong>Uploaded:</strong> ${formatDate(player.created_at)}
+              </p>
+              <div class="doc-links">
+                <a class="button" href="/api/admin/players/${Number(player.id)}/file/photo" target="_blank" rel="noopener">View Photo</a>
+                <a class="button secondary" href="/api/admin/players/${Number(player.id)}/file/aadhaar" target="_blank" rel="noopener">View Aadhaar Card</a>
+              </div>
+            </div>
+          </div>`;
+        target.appendChild(card);
+      });
+    }
+
+    target.dataset.loaded = "true";
+    button.textContent = "Hide Player Details";
+  } catch (err) {
+    target.innerHTML = `<div class="error">${escapeHtml(err.message)}</div>`;
+    button.textContent = "Try Again";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function setStatus(id, status) {
+  try {
+    await api(`/api/admin/teams/${id}/status`, {
+      method:"PATCH",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({status})
+    });
+    await loadAdmin();
+  } catch(err) {
+    alert(err.message);
+  }
+}
+
+document.getElementById("refresh").addEventListener("click", () => {
+  loadAdmin().catch(err => alert(err.message));
+});
+
+document.getElementById("logout").addEventListener("click", async () => {
+  await api("/api/logout", {method:"POST"});
+  location.href="/login.html";
+});
+
+loadAdmin().catch(() => location.href="/login.html");
+</script>
 </body>
 </html>
