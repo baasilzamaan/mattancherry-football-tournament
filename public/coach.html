@@ -32,6 +32,19 @@
   </section>
 
   <section class="card">
+    <div class="row-between">
+      <h2>My Players</h2>
+      <button id="refreshPlayers" class="button secondary" type="button">Refresh</button>
+    </div>
+    <label>Team
+      <select id="playerTeamSelect"></select>
+    </label>
+    <div id="players" class="players-list">
+      <p>Select a team to view its players.</p>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Add Player</h2>
     <form id="playerForm" enctype="multipart/form-data">
       <label>Team
