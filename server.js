@@ -152,8 +152,12 @@ async function initDb() {
   await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS aadhaar_path TEXT`);
 
 
-  // Compatibility migration for older player tables.
-  // Old versions used school_id_number/school_id_path; the current form uses Aadhaar.
+  // Compatibility migration for databases created by older versions.
+  // The current form uses Aadhaar, while old versions used school-ID fields.
+  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
+  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS aadhaar_path TEXT`);
+  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS school_id_number VARCHAR(100)`);
+  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS school_id_path TEXT`);
   await pool.query(`ALTER TABLE players ALTER COLUMN school_id_number DROP NOT NULL`);
   await pool.query(`ALTER TABLE players ALTER COLUMN school_id_path DROP NOT NULL`);
   // If an earlier version stored the player's phone in school_id_number,
@@ -334,7 +338,7 @@ app.post("/api/teams/:teamId/players",
       const result = await pool.query(
         `INSERT INTO players
           (team_id,full_name,date_of_birth,phone_number,aadhaar_path,photo_path,school_id_number,school_id_path)
-         VALUES($1,$2,$3,$4,$5,$6,NULL,NULL)
+         VALUES($1,$2,$3,$4,$5,$6,'','')
          RETURNING id,team_id,full_name,date_of_birth,phone_number,created_at`,
         [teamId, fullName, dateOfBirth, phoneNumber, aadhaarCard.filename, photo.filename]
       );
