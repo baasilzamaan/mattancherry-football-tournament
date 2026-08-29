@@ -151,15 +151,12 @@ async function initDb() {
   await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
   await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS aadhaar_path TEXT`);
 
+  // Current form stores the Aadhaar card as a private file; it does not collect an Aadhaar number.
+  // Some older databases have aadhaar_number marked NOT NULL, which blocks player inserts.
+  // Keep that legacy column for compatibility, but allow it to be empty.
+  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(12)`);
+  await pool.query(`ALTER TABLE players ALTER COLUMN aadhaar_number DROP NOT NULL`);
 
-  // Compatibility migration for databases created by older versions.
-  // The current form uses Aadhaar, while old versions used school-ID fields.
-  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
-  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS aadhaar_path TEXT`);
-  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS school_id_number VARCHAR(100)`);
-  await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS school_id_path TEXT`);
-  await pool.query(`ALTER TABLE players ALTER COLUMN school_id_number DROP NOT NULL`);
-  await pool.query(`ALTER TABLE players ALTER COLUMN school_id_path DROP NOT NULL`);
   // If an earlier version stored the player's phone in school_id_number,
   // copy it once into the new phone_number field where possible.
   await pool.query(`
@@ -337,8 +334,8 @@ app.post("/api/teams/:teamId/players",
 
       const result = await pool.query(
         `INSERT INTO players
-          (team_id,full_name,date_of_birth,phone_number,aadhaar_path,photo_path,school_id_number,school_id_path)
-         VALUES($1,$2,$3,$4,$5,$6,'','')
+          (team_id,full_name,date_of_birth,phone_number,aadhaar_number,aadhaar_path,photo_path,school_id_number,school_id_path)
+         VALUES($1,$2,$3,$4,NULL,$5,$6,NULL,NULL)
          RETURNING id,team_id,full_name,date_of_birth,phone_number,created_at`,
         [teamId, fullName, dateOfBirth, phoneNumber, aadhaarCard.filename, photo.filename]
       );
@@ -356,7 +353,7 @@ app.post("/api/teams/:teamId/players",
       console.error("PLAYER INSERT ERROR:", err);
       res.status(500).json({
         error: process.env.NODE_ENV === "production"
-          ? "Could not add player. Check the Render logs for PLAYER INSERT ERROR."
+          ? "Could not add player. Check Render logs for PLAYER INSERT ERROR."
           : (err.message || "Could not add player.")
       });
     }
@@ -380,12 +377,9 @@ app.get("/api/my-teams/:teamId/players", requireDb, requireAuth, requireRole("co
       `SELECT id,team_id,full_name,date_of_birth,phone_number,created_at,
               CASE WHEN photo_path IS NOT NULL THEN true ELSE false END AS has_photo,
               CASE WHEN aadhaar_path IS NOT NULL THEN true ELSE false END AS has_aadhaar
-       FROM players
-       WHERE team_id=$1
-       ORDER BY created_at ASC`,
+       FROM players WHERE team_id=$1 ORDER BY created_at ASC`,
       [teamId]
     );
-
     res.json({ players: result.rows });
   } catch (err) {
     console.error(err);
@@ -393,7 +387,6 @@ app.get("/api/my-teams/:teamId/players", requireDb, requireAuth, requireRole("co
   }
 });
 
-// Coach-only private player files.
 app.get("/api/my-players/:playerId/file/:kind", requireDb, requireAuth, requireRole("coach"), async (req, res) => {
   try {
     const playerId = Number(req.params.playerId);
@@ -405,8 +398,7 @@ app.get("/api/my-players/:playerId/file/:kind", requireDb, requireAuth, requireR
 
     const result = await pool.query(
       `SELECT p.${field} AS filename
-       FROM players p
-       JOIN teams t ON t.id=p.team_id
+       FROM players p JOIN teams t ON t.id=p.team_id
        WHERE p.id=$1 AND t.coach_user_id=$2`,
       [playerId, req.session.user.id]
     );
