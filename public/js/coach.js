@@ -52,7 +52,6 @@ async function loadTeams() {
 
 async function loadPlayers(teamId) {
   const box = document.getElementById("players");
-
   if (!teamId) {
     box.innerHTML = "<p>Select a team to view its players.</p>";
     return;
@@ -92,8 +91,11 @@ async function loadPlayers(teamId) {
 
     box.querySelectorAll(".view-file").forEach(button => {
       button.addEventListener("click", () => {
-        const url = `/api/my-players/${encodeURIComponent(button.dataset.player)}/file/${encodeURIComponent(button.dataset.kind)}`;
-        window.open(url, "_blank", "noopener");
+        window.open(
+          `/api/my-players/${encodeURIComponent(button.dataset.player)}/file/${encodeURIComponent(button.dataset.kind)}`,
+          "_blank",
+          "noopener"
+        );
       });
     });
   } catch (err) {
@@ -117,7 +119,6 @@ document.getElementById("teamForm").addEventListener("submit", async e => {
         schoolOrClub: f.get("schoolOrClub")
       })
     });
-
     msg.textContent = "Team registered successfully.";
     e.target.reset();
     await loadTeams();
@@ -161,7 +162,6 @@ document.getElementById("playerForm").addEventListener("submit", async e => {
 
     msg.textContent = "Player added successfully.";
     form.reset();
-
     await loadTeams();
   } catch (err) {
     msg.textContent = err.message;
