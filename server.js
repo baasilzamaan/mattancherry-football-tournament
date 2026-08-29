@@ -350,6 +350,75 @@ app.post("/api/teams/:teamId/players",
   }
 );
 
+// Coach can view players belonging only to their own team.
+app.get("/api/my-teams/:teamId/players", requireDb, requireAuth, requireRole("coach"), async (req, res) => {
+  try {
+    const teamId = Number(req.params.teamId);
+    if (!Number.isInteger(teamId) || teamId < 1) {
+      return res.status(400).json({ error: "Invalid team." });
+    }
+
+    const team = await pool.query(
+      "SELECT id FROM teams WHERE id=$1 AND coach_user_id=$2",
+      [teamId, req.session.user.id]
+    );
+
+    if (!team.rowCount) return res.status(404).json({ error: "Team not found." });
+
+    const result = await pool.query(
+      `SELECT id,team_id,full_name,date_of_birth,phone_number,created_at,
+              CASE WHEN photo_path IS NOT NULL THEN true ELSE false END AS has_photo,
+              CASE WHEN aadhaar_path IS NOT NULL THEN true ELSE false END AS has_aadhaar
+       FROM players
+       WHERE team_id=$1
+       ORDER BY created_at ASC`,
+      [teamId]
+    );
+
+    res.json({ players: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not load player details." });
+  }
+});
+
+// Coach-only private player files. Ownership is checked before every file request.
+app.get("/api/my-players/:playerId/file/:kind", requireDb, requireAuth, requireRole("coach"), async (req, res) => {
+  try {
+    const playerId = Number(req.params.playerId);
+    if (!Number.isInteger(playerId) || playerId < 1) {
+      return res.status(400).json({ error: "Invalid player." });
+    }
+
+    const field = req.params.kind === "photo" ? "photo_path" :
+                  req.params.kind === "aadhaar" ? "aadhaar_path" : null;
+
+    if (!field) return res.status(400).json({ error: "Invalid file type." });
+
+    const result = await pool.query(
+      `SELECT p.${field} AS filename
+       FROM players p
+       JOIN teams t ON t.id=p.team_id
+       WHERE p.id=$1 AND t.coach_user_id=$2`,
+      [playerId, req.session.user.id]
+    );
+
+    if (!result.rowCount) return res.status(404).json({ error: "Player not found." });
+
+    const filePath = safePrivateFile(result.rows[0].filename);
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File not found." });
+    }
+
+    res.setHeader("Cache-Control", "private, no-store, max-age=0");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Could not open file." });
+  }
+});
+
 // Admin team list. Includes no private file URLs; files are served only through authenticated routes.
 app.get("/api/admin/teams", requireDb, requireAuth, requireRole("admin"), async (req, res) => {
   try {
